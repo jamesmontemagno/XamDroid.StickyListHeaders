@@ -19,6 +19,7 @@
 
 using Android.Content;
 using Android.Widget;
+using Java.Interop;
 
 namespace com.refractored.components.stickylistheaders
 {
@@ -27,12 +28,18 @@ namespace com.refractored.components.stickylistheaders
     /// </summary>
     public class SectionIndexerAdapterWrapper : AdapterWrapper, ISectionIndexer
     {
-        private readonly ISectionIndexer m_SectionIndexer;
+        private ISectionIndexer m_SectionIndexer;
 
-        public SectionIndexerAdapterWrapper(Context context, IStickyListHeadersAdapter sectionDelegate) : base(context, sectionDelegate)
+        public SectionIndexerAdapterWrapper(Context context) : base(context)
+        {
+           
+        }
+
+        public void SetSectionDelegate(IStickyListHeadersAdapter sectionDelegate)
         {
             m_SectionIndexer = sectionDelegate as ISectionIndexer;
         }
+
         public int GetPositionForSection(int section)
         {
             return m_SectionIndexer.GetPositionForSection(section);

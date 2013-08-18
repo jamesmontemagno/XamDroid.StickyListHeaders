@@ -23,6 +23,7 @@ using Android.Database;
 using Android.Graphics.Drawables;
 using Android.Views;
 using Android.Widget;
+using Java.Interop;
 using Java.Lang;
 using com.refractored.components.stickylistheaders.Interfaces;
 using Exception = System.Exception;
@@ -42,30 +43,20 @@ namespace com.refractored.components.stickylistheaders
         private readonly List<View> m_HeaderCache = new List<View>();
         private readonly Context m_Context;
         public IOnHeaderAdapterClickListener OnHeaderAdapterClickListener { get; set; }
-        private readonly DataSetObserver m_DataSetObserver;
+        private DataSetObserver m_DataSetObserver;
 
-        public AdapterWrapper()
+        public AdapterWrapper(Context context)
         {
-            
+            m_Context = context;
         }
 
-        public AdapterWrapper(Context context, IStickyListHeadersAdapter delegateHeader)
+        public void SetDelegateHeader(IStickyListHeadersAdapter delegateHeader)
         {
-            try
-            {
+            Delegate = delegateHeader;
 
-                m_Context = context;
-                Delegate = delegateHeader;
+            m_DataSetObserver = new AdapterWrapperObserver(this, m_HeaderCache);
 
-                m_DataSetObserver = new AdapterWrapperObserver(this, m_HeaderCache);
-
-                Delegate.RegisterDataSetObserver(m_DataSetObserver);
-
-            }
-            catch (Exception)
-            {
-
-            }
+            Delegate.RegisterDataSetObserver(m_DataSetObserver);
         }
 
         public class AdapterWrapperObserver : DataSetObserver

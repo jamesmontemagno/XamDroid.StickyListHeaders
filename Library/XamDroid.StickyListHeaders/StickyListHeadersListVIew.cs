@@ -346,9 +346,15 @@ namespace com.refractored.components.stickylistheaders
         {
             AdapterWrapper wrapper = null;
             if (adapter is ISectionIndexer)
-                wrapper = new SectionIndexerAdapterWrapper(Context, (IStickyListHeadersAdapter) adapter);
+            {
+                wrapper = new SectionIndexerAdapterWrapper(Context);
+                wrapper.SetDelegateHeader((IStickyListHeadersAdapter)adapter);
+            }
             else
-                wrapper = new AdapterWrapper(Context, (IStickyListHeadersAdapter)adapter);
+            {
+                wrapper = new AdapterWrapper(Context);
+                wrapper.SetDelegateHeader((IStickyListHeadersAdapter) adapter);
+            }
 
             wrapper.Divider = m_Divider;
             wrapper.DividerHeight = m_DividerHeight;
