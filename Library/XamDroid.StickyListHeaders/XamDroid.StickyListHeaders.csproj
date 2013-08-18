@@ -11,10 +11,10 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>com.refractored.components.stickylistheaders</RootNamespace>
     <AssemblyName>com.refractored.components.stickylistheaders</AssemblyName>
+
     <FileAlignment>512</FileAlignment>
-    <AndroidResgenFile>Resources\Resource.Designer.cs</AndroidResgenFile>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <TargetFrameworkVersion>v2.3</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -44,10 +44,12 @@
   <ItemGroup>
     <Compile Include="AdapterWrapper.cs" />
     <Compile Include="CheckableWrapperView.cs" />
+    <Compile Include="Interfaces\IOnHeaderAdapterClickListener.cs" />
+    <Compile Include="Interfaces\IOnHeaderListClickListener.cs" />
     <Compile Include="Resources\Resource.Designer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SectionIndexerAdapterWrapper.cs" />
-    <Compile Include="IStickyListHeadersAdapter.cs" />
+    <Compile Include="Interfaces\IStickyListHeadersAdapter.cs" />
     <Compile Include="StickyListHeadersListView.cs" />
     <Compile Include="WrapperView.cs" />
   </ItemGroup>

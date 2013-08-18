@@ -24,6 +24,8 @@ using Android.Graphics.Drawables;
 using Android.Views;
 using Android.Widget;
 using Java.Lang;
+using com.refractored.components.stickylistheaders.Interfaces;
+using Exception = System.Exception;
 
 namespace com.refractored.components.stickylistheaders
 {
@@ -34,25 +36,36 @@ namespace com.refractored.components.stickylistheaders
     public class AdapterWrapper : BaseAdapter, IStickyListHeadersAdapter
     {
 
-        public interface IOnHeaderClickListener
-        {
-            void OnHeaderClick(View header, int itemPosition, long headerId);
-        }
+        
 
         public IStickyListHeadersAdapter Delegate { get; set; }
         private readonly List<View> m_HeaderCache = new List<View>();
         private readonly Context m_Context;
-        public IOnHeaderClickListener OnHeaderClickListener { get; set; }
+        public IOnHeaderAdapterClickListener OnHeaderAdapterClickListener { get; set; }
         private readonly DataSetObserver m_DataSetObserver;
+
+        public AdapterWrapper()
+        {
+            
+        }
 
         public AdapterWrapper(Context context, IStickyListHeadersAdapter delegateHeader)
         {
-            m_Context = context;
-            Delegate = delegateHeader;
+            try
+            {
 
-            m_DataSetObserver = new AdapterWrapperObserver(this, m_HeaderCache);
+                m_Context = context;
+                Delegate = delegateHeader;
 
-            Delegate.RegisterDataSetObserver(m_DataSetObserver);
+                m_DataSetObserver = new AdapterWrapperObserver(this, m_HeaderCache);
+
+                Delegate.RegisterDataSetObserver(m_DataSetObserver);
+
+            }
+            catch (Exception)
+            {
+
+            }
         }
 
         public class AdapterWrapperObserver : DataSetObserver
@@ -234,11 +247,11 @@ namespace com.refractored.components.stickylistheaders
             header.Clickable = true;
             header.Click += (sender, args) =>
                 {
-                    if (OnHeaderClickListener == null)
+                    if (OnHeaderAdapterClickListener == null)
                         return;
 
                     var headerId = Delegate.GetHeaderId(position);
-                    OnHeaderClickListener.OnHeaderClick((View)sender, position, headerId);
+                    OnHeaderAdapterClickListener.OnHeaderClick((View)sender, position, headerId);
                 };
 
             return header;

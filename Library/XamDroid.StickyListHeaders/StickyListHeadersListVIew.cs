@@ -27,6 +27,7 @@ using Android.Util;
 using Android.Views;
 using Android.Widget;
 using Java.Lang;
+using com.refractored.components.stickylistheaders.Interfaces;
 using Exception = System.Exception;
 using Math = System.Math;
 
@@ -34,11 +35,7 @@ namespace com.refractored.components.stickylistheaders
 {
     public class StickyListHeadersListView : ListView
     {
-        public interface IOnHeaderClickListener
-        {
-            void OnHeaderClick(StickyListHeadersListView listView, View header, int itemPosition, long headerId,
-                               bool currentlySticky);
-        }
+       
 
         public IOnScrollListener OnScrollListenerDelegate { get; set; }
         private bool m_AreHeadersSticky;
@@ -58,7 +55,7 @@ namespace com.refractored.components.stickylistheaders
             }
         }
 
-        public IOnHeaderClickListener OnHeaderClickListener { get; set; }
+        public IOnHeaderListClickListener OnHeaderListClickListener { get; set; }
         public bool IsDrawingListUnderStickyHeader { get; set; }
 
         private int m_HeaderBottomPosition;
@@ -76,27 +73,27 @@ namespace com.refractored.components.stickylistheaders
         private List<View> m_FooterViews;
         private readonly Rect m_SelectorRect = new Rect(); //for if reflection fails
         private readonly IntPtr m_SelectorPositionField;
-        private readonly AdapterHeaderClickListener m_AdapterHeaderClickListener;
+        private readonly AdapterHeaderAdapterClickListener m_AdapterHeaderAdapterClickListener;
         private readonly DataSetObserver m_DataSetObserver;
         private readonly IOnScrollListener m_OnScrollListener;
 
-        private class AdapterHeaderClickListener : AdapterWrapper.IOnHeaderClickListener
+        private class AdapterHeaderAdapterClickListener : IOnHeaderAdapterClickListener
         {
-            private readonly IOnHeaderClickListener m_OnHeaderClickListener;
+            private readonly IOnHeaderListClickListener m_OnHeaderListClickListener;
             private readonly StickyListHeadersListView m_StickyListHeadersListView;
 
-            public AdapterHeaderClickListener(IOnHeaderClickListener clickListener, StickyListHeadersListView stickyListHeadersListView)
+            public AdapterHeaderAdapterClickListener(IOnHeaderListClickListener listClickListener, StickyListHeadersListView stickyListHeadersListView)
             {
-                m_OnHeaderClickListener = clickListener;
+                m_OnHeaderListClickListener = listClickListener;
                 m_StickyListHeadersListView = stickyListHeadersListView;
             }
 
             public void OnHeaderClick(View header, int itemPosition, long headerId)
             {
-                if (m_OnHeaderClickListener == null)
+                if (m_OnHeaderListClickListener == null)
                     return;
 
-                m_OnHeaderClickListener.OnHeaderClick(m_StickyListHeadersListView, header, itemPosition, headerId, false);
+                m_OnHeaderListClickListener.OnHeaderClick(m_StickyListHeadersListView, header, itemPosition, headerId, false);
             }
         }
 
@@ -184,7 +181,7 @@ namespace com.refractored.components.stickylistheaders
         {
             m_DataSetObserver = new StickyListHeadersListViewObserver(this);
             m_OnScrollListener = new StickyListHeadersListViewOnScrollListener(OnScrollListenerDelegate, this);
-            m_AdapterHeaderClickListener = new AdapterHeaderClickListener(OnHeaderClickListener, this);
+            m_AdapterHeaderAdapterClickListener = new AdapterHeaderAdapterClickListener(OnHeaderListClickListener, this);
 
             base.SetOnScrollListener(m_OnScrollListener);
             //null out divider, dividers are handled by adapter so they look good with headers
@@ -245,8 +242,9 @@ namespace com.refractored.components.stickylistheaders
             base.SetSelectionFromTop(position, y);
         }
 
+
 #if __ANDROID_11__
-        public override SmoothScrollToPositionFromTop(int position, int offset, int duration)
+        public override void SmoothScrollToPositionFromTop(int position, int offset, int duration)
         {
             if (HasStickyHeaderAtPosition(position))
                     offset += GetHeaderHeight();
@@ -355,7 +353,7 @@ namespace com.refractored.components.stickylistheaders
             wrapper.Divider = m_Divider;
             wrapper.DividerHeight = m_DividerHeight;
             wrapper.RegisterDataSetObserver(m_DataSetObserver);
-            wrapper.OnHeaderClickListener = m_AdapterHeaderClickListener;
+            wrapper.OnHeaderAdapterClickListener = m_AdapterHeaderAdapterClickListener;
             return wrapper;
         }
 
@@ -494,7 +492,7 @@ namespace com.refractored.components.stickylistheaders
 #if __ANDROID_17__
             if ((int)Build.VERSION.SdkInt >= 17) //JB_MR1
             {
-                m_Header.LayoutDirection - this.LayoutDirection;
+                m_Header.LayoutDirection = this.LayoutDirection;
             }
 #endif
 
@@ -685,8 +683,8 @@ namespace com.refractored.components.stickylistheaders
                         m_Header.Pressed = false;
                         m_Header.Invalidate();
                         Invalidate(0,0,Width, m_HeaderBottomPosition);
-                        if(OnHeaderClickListener != null)
-                            OnHeaderClickListener.OnHeaderClick(this, m_Header, m_HeaderPosition, m_CurrentHeaderId, true);
+                        if(OnHeaderListClickListener != null)
+                            OnHeaderListClickListener.OnHeaderClick(this, m_Header, m_HeaderPosition, m_CurrentHeaderId, true);
                     }
                     return true;
                 }
