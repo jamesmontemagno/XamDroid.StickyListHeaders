@@ -87,6 +87,29 @@ namespace com.refractored.xamdroid.stickylistheaders.sample
 
         public override View GetView(int position, View convertView, ViewGroup parent)
         {
+            ViewHolder holder = null;
+            if (convertView == null)
+            {
+                holder = new ViewHolder();
+                convertView = m_Inflater.Inflate(Resource.Layout.test_list_item_layout, parent, false);
+                holder.Text = convertView.FindViewById<TextView>(Resource.Id.text);
+                convertView.Tag = holder;
+            }
+            else
+            {
+                holder = convertView.Tag as ViewHolder;
+            }
+            holder.Text.Text = m_Countries[position];
+
+            return convertView;
+
+        }
+
+
+
+
+        public View GetHeaderView(int position, View convertView, ViewGroup parent)
+        {
             HeaderViewHolder holder = null;
             if (convertView == null)
             {
@@ -102,7 +125,7 @@ namespace com.refractored.xamdroid.stickylistheaders.sample
 
             var headerChar = m_Countries[position].Substring(0, 1)[0];
             string headerText;
-            if (headerChar%2 == 0)
+            if (headerChar % 2 == 0)
             {
                 headerText = headerChar + "\n" + headerChar + "\n" + headerChar;
             }
@@ -112,15 +135,6 @@ namespace com.refractored.xamdroid.stickylistheaders.sample
             }
             holder.Text1.Text = headerText;
             return convertView;
-
-        }
-
-
-
-
-        public View GetHeaderView(int position, View convertView, ViewGroup parent)
-        {
-            throw new System.NotImplementedException();
         }
 
         public long GetHeaderId(int position)

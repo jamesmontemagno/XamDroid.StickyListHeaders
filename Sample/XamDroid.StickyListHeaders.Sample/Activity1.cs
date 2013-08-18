@@ -7,20 +7,15 @@ using Android.OS;
 namespace com.refractored.xamdroid.stickylistheaders.sample
 {
     [Activity(Label = "XamDroid.StickyListHeaders.Sample", MainLauncher = true, Icon = "@drawable/icon")]
-    public class Activity1 : FragmentActivity, ViewPager.IOnPageChangeListener 
+#if __ANDROID_11__
+    public class Activity1 : FragmentActivity, ViewPager.IOnPageChangeListener, ActionBar.ITabListener
+#else
+    public class Activity1 : FragmentActivity, ViewPager.IOnPageChangeListener
+#endif
     {
         private ViewPager m_Pager;
 #if __ANDROID_11__
-        private ActionBar.ITabListener tabChangeListener;
-        public class MyListener : ActionBar.ITabListener
-        {
-            private ViewPager m_Pager;
 
-            private IntPtr m_IntPtr = new IntPtr();
-            public MyListener(ViewPager viewPager)
-            {
-                m_Pager = viewPager;
-            }
             public void OnTabReselected(ActionBar.Tab tab, Android.App.FragmentTransaction ft)
             {
             }
@@ -34,15 +29,6 @@ namespace com.refractored.xamdroid.stickylistheaders.sample
             {
             }
 
-            public System.IntPtr Handle
-            {
-                get { return m_IntPtr; }
-            }
-
-            public void Dispose()
-            {
-            }
-        }
 #endif
 
         protected override void OnCreate(Bundle bundle)
@@ -57,12 +43,27 @@ namespace com.refractored.xamdroid.stickylistheaders.sample
 
 
 #if __ANDROID_11__
-            tabChangeListener = new MyListener(m_Pager);
             ActionBar.NavigationMode = ActionBarNavigationMode.Tabs;
-            ActionBar.AddTab(ActionBar.NewTab().SetText("1").SetTabListener(tabChangeListener));
-            ActionBar.AddTab(ActionBar.NewTab().SetText("2").SetTabListener(tabChangeListener));
-            ActionBar.AddTab(ActionBar.NewTab().SetText("3").SetTabListener(tabChangeListener));
-            ActionBar.AddTab(ActionBar.NewTab().SetText("4").SetTabListener(tabChangeListener));
+            var tab = ActionBar.NewTab();
+            tab.SetText("1");
+            tab.SetTabListener(this);
+
+            ActionBar.AddTab(tab);
+
+            tab = ActionBar.NewTab();
+            tab.SetText("2");
+            tab.SetTabListener(this);
+            ActionBar.AddTab(tab);
+            
+            tab = ActionBar.NewTab();
+            tab.SetText("3");
+            tab.SetTabListener(this);
+            ActionBar.AddTab(tab); 
+            
+            tab = ActionBar.NewTab();
+            tab.SetText("4");
+            tab.SetTabListener(this);
+            ActionBar.AddTab(tab);
 #endif
 
         }

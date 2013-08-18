@@ -162,7 +162,11 @@ namespace com.refractored.components.stickylistheaders
             }
         }
 
-
+        public StickyListHeadersListView(System.IntPtr javaReference, Android.Runtime.JniHandleOwnership transfer)
+            : base(javaReference, transfer)
+        {
+          
+        }
 
 
         public StickyListHeadersListView(Context context) : this(context, null)
