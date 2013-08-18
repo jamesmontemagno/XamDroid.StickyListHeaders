@@ -17,19 +17,688 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using Android.App;
 using Android.Content;
+using Android.Database;
+using Android.Graphics;
+using Android.Graphics.Drawables;
 using Android.OS;
 using Android.Runtime;
+using Android.Util;
 using Android.Views;
 using Android.Widget;
+using Java.Lang;
+using Exception = System.Exception;
+using Math = System.Math;
 
 namespace com.refractored.components.stickylistheaders
 {
-    class StickyListHeadersListVIew
+    public class StickyListHeadersListView : ListView
     {
+        public interface IOnHeaderClickListener
+        {
+            void OnHeaderClick(StickyListHeadersListView listView, View header, int itemPosition, long headerId,
+                               bool currentlySticky);
+        }
+
+        public IOnScrollListener OnScrollListenerDelegate { get; set; }
+        private bool m_AreHeadersSticky;
+        /// <summary>
+        /// gets or sets if the headers are sticky
+        /// </summary>
+        public bool AreHeadersSticky
+        {
+            get { return m_AreHeadersSticky; }
+            set
+            {
+                if (m_AreHeadersSticky == value)
+                    return;
+
+                m_AreHeadersSticky = value;
+                RequestLayout();
+            }
+        }
+
+        public IOnHeaderClickListener OnHeaderClickListener { get; set; }
+        public bool IsDrawingListUnderStickyHeader { get; set; }
+
+        private int m_HeaderBottomPosition;
+        private View m_Header;
+        private int m_DividerHeight;
+        private Drawable m_Divider;
+        private bool m_ClippingToPadding;
+        private readonly Rect m_ClippingRect = new Rect();
+        private long m_CurrentHeaderId = -1;
+        private AdapterWrapper m_Adapter;
+        private float m_HeaderDownY = -1;
+        private bool m_HeaderBeingPressed = false;
+        private int m_HeaderPosition;
+        private readonly ViewConfiguration m_ViewConfiguration;
+        private List<View> m_FooterViews;
+        private readonly Rect m_SelectorRect = new Rect(); //for if reflection fails
+        private readonly IntPtr m_SelectorPositionField;
+        private readonly AdapterHeaderClickListener m_AdapterHeaderClickListener;
+        private readonly DataSetObserver m_DataSetObserver;
+        private readonly IOnScrollListener m_OnScrollListener;
+
+        private class AdapterHeaderClickListener : AdapterWrapper.IOnHeaderClickListener
+        {
+            private readonly IOnHeaderClickListener m_OnHeaderClickListener;
+            private readonly StickyListHeadersListView m_StickyListHeadersListView;
+
+            public AdapterHeaderClickListener(IOnHeaderClickListener clickListener, StickyListHeadersListView stickyListHeadersListView)
+            {
+                m_OnHeaderClickListener = clickListener;
+                m_StickyListHeadersListView = stickyListHeadersListView;
+            }
+
+            public void OnHeaderClick(View header, int itemPosition, long headerId)
+            {
+                if (m_OnHeaderClickListener == null)
+                    return;
+
+                m_OnHeaderClickListener.OnHeaderClick(m_StickyListHeadersListView, header, itemPosition, headerId, false);
+            }
+        }
+
+        private class StickyListHeadersListViewObserver : DataSetObserver
+        {
+            private readonly StickyListHeadersListView m_ListView;
+            public StickyListHeadersListViewObserver(StickyListHeadersListView listView)
+            {
+                m_ListView = listView;
+            }
+            public override void OnInvalidated()
+            {
+                m_ListView.Reset();
+            }
+
+            public override void OnChanged()
+            {
+                m_ListView.Reset();
+            }
+        }
+
+        private class StickyListHeadersListViewOnScrollListener : IOnScrollListener
+        {
+            private readonly IOnScrollListener m_OnScrollListener;
+            private readonly StickyListHeadersListView m_StickyListHeadersListView;
+            public StickyListHeadersListViewOnScrollListener(IOnScrollListener listener, StickyListHeadersListView stickyListHeadersListView)
+            {
+                m_OnScrollListener = listener;
+                m_StickyListHeadersListView = stickyListHeadersListView;
+            }
+
+            public void OnScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount)
+            {
+                if (m_OnScrollListener != null)
+                    m_OnScrollListener.OnScroll(view, firstVisibleItem, visibleItemCount, totalItemCount);
+
+                if ((int) Build.VERSION.SdkInt >= 8)//FROYO
+                    m_StickyListHeadersListView.ScrollChanged(firstVisibleItem);
+            }
+
+            public void OnScrollStateChanged(AbsListView view, ScrollState scrollState)
+            {
+                if (m_OnScrollListener == null)
+                    return;
+
+                m_OnScrollListener.OnScrollStateChanged(view, scrollState);
+            }
+
+            public void Dispose()
+            {
+                if (m_OnScrollListener == null)
+                    return;
+
+                m_OnScrollListener.Dispose();
+            }
+
+            public IntPtr Handle
+            {
+                get
+                {
+                    if (m_OnScrollListener == null)
+                        return IntPtr.Zero;
+
+                    return m_OnScrollListener.Handle;
+                }
+            }
+        }
+
+
+
+
+        public StickyListHeadersListView(Context context) : this(context, null)
+        {
+            
+        }
+
+        public StickyListHeadersListView(Context context, IAttributeSet attrs) :
+            this(context, attrs, Android.Resource.Attribute.ListViewStyle)
+        {
+            
+        }
+
+        public StickyListHeadersListView(Context context, IAttributeSet attrs, int defStyle) :
+            base(context, attrs, defStyle)
+        {
+            m_DataSetObserver = new StickyListHeadersListViewObserver(this);
+            m_OnScrollListener = new StickyListHeadersListViewOnScrollListener(OnScrollListenerDelegate, this);
+            m_AdapterHeaderClickListener = new AdapterHeaderClickListener(OnHeaderClickListener, this);
+
+            base.SetOnScrollListener(m_OnScrollListener);
+            //null out divider, dividers are handled by adapter so they look good with headers
+            base.Divider = null;
+            base.DividerHeight = 0;
+
+            m_ViewConfiguration = ViewConfiguration.Get(context);
+            m_ClippingToPadding = true;
+
+            try
+            {
+                //reflection to get selector ref
+                var absListViewClass = JNIEnv.FindClass(typeof (AbsListView));
+                var selectorRectId = JNIEnv.GetFieldID(absListViewClass, "mSelectorRect", "()Landroid/graphics/Rect");
+                var selectorRectField = JNIEnv.GetObjectField(absListViewClass, selectorRectId);
+                m_SelectorRect = Java.Lang.Object.GetObject<Rect>(selectorRectField, JniHandleOwnership.TransferLocalRef);
+
+                var selectorPositionId = JNIEnv.GetFieldID(absListViewClass, "mSelectorPosition", "()Ljava/lang/Integer");
+                m_SelectorPositionField = JNIEnv.GetObjectField(absListViewClass, selectorPositionId);
+            }
+            catch (Exception)
+            {
+                
+            }
+        }
+
+        protected override void OnLayout(bool changed, int left, int top, int right, int bottom)
+        {
+            base.OnLayout(changed, left, top, right, bottom);
+            if (changed)
+            {
+                Reset();
+                ScrollChanged(FirstVisiblePosition);
+            }
+        }
+
+        private void Reset()
+        {
+            m_Header = null;
+            m_CurrentHeaderId = -1;
+            m_HeaderPosition = -1;
+            m_HeaderBottomPosition = -1;
+        }
+
+        public override bool PerformItemClick(View view, int position, long id)
+        {
+            if (view is WrapperView)
+                view = ((WrapperView) view).Item;
+
+            return base.PerformItemClick(view, position, id);
+        }
+
+        public override void SetSelectionFromTop(int position, int y)
+        {
+            if (HasStickyHeaderAtPosition(position))
+                y += GetHeaderHeight();
+
+            base.SetSelectionFromTop(position, y);
+        }
+
+#if __ANDROID_11__
+        public override SmoothScrollToPositionFromTop(int position, int offset, int duration)
+        {
+            if (HasStickyHeaderAtPosition(position))
+                    offset += GetHeaderHeight();
+
+            base.SmoothScrollToPositionFromTop(position, offset, duration);
+        }
+#endif
+
+        private bool HasStickyHeaderAtPosition(int position)
+        {
+            position -= HeaderViewsCount;
+            return AreHeadersSticky && position > 0 &&
+                   position < m_Adapter.Count &&
+                   m_Adapter.GetHeaderId(position) == m_Adapter.GetHeaderId(position - 1);
+        }
+
+        public override Drawable Divider
+        {
+            get { return m_Divider; }
+            set
+            {
+                m_Divider = value;
+                if (m_Divider != null)
+                {
+                    var dividerDrawableHeight = m_Divider.IntrinsicHeight;
+                    if (dividerDrawableHeight >= 0)
+                    {
+                        DividerHeight = dividerDrawableHeight;
+                    }
+                }
+
+                if (m_Adapter != null)
+                {
+                    m_Adapter.Divider = m_Divider;
+                    RequestLayout();
+                    Invalidate();
+                }
+            }
+        }
+
+        public override int DividerHeight
+        {
+            get
+            {
+                return m_DividerHeight;
+            }
+            set
+            {
+                m_DividerHeight = value;
+                if (m_Adapter != null)
+                {
+                    m_Adapter.DividerHeight = m_DividerHeight;
+                    RequestLayout();
+                    Invalidate();
+                }
+            }
+        }
+
+        public override void SetOnScrollListener(IOnScrollListener l)
+        {
+            OnScrollListenerDelegate = l;
+        }
+
+        public override IListAdapter Adapter
+        {
+            get
+            {
+                return base.Adapter;
+            }
+            set
+            {
+                if (IsInEditMode)
+                {
+                    base.Adapter = value;
+                    return;
+                }
+
+                if (value == null)
+                {
+                    m_Adapter = null;
+                    Reset();
+                    base.Adapter = null;
+                    return;
+                }
+
+                if (!(value is IStickyListHeadersAdapter))
+                {
+                    throw new IllegalArgumentException("Adapter must implement IStickyListHeadersAdapater");
+                }
+
+                m_Adapter = wrapAdapter(value);
+                Reset();
+                base.Adapter = m_Adapter;
+
+            }
+        }
+
+        private AdapterWrapper wrapAdapter(IListAdapter adapter)
+        {
+            AdapterWrapper wrapper = null;
+            if (adapter is ISectionIndexer)
+                wrapper = new SectionIndexerAdapterWrapper(Context, (IStickyListHeadersAdapter) adapter);
+            else
+                wrapper = new AdapterWrapper(Context, (IStickyListHeadersAdapter)adapter);
+
+            wrapper.Divider = m_Divider;
+            wrapper.DividerHeight = m_DividerHeight;
+            wrapper.RegisterDataSetObserver(m_DataSetObserver);
+            wrapper.OnHeaderClickListener = m_AdapterHeaderClickListener;
+            return wrapper;
+        }
+
+        public IStickyListHeadersAdapter WrappedAdapter
+        {
+            get { return m_Adapter == null ? null : m_Adapter.Delegate; }
+        }
+
+        public View GetWrappedView(int position)
+        {
+            var view = GetChildAt(position);
+            var wrapperView = view as WrapperView;
+            if (wrapperView != null)
+            {
+                return wrapperView.Item;
+            }
+
+            return view;
+        }
+
+        protected override void DispatchDraw(Canvas canvas)
+        {
+            if ((int) Build.VERSION.SdkInt < 8) //froyo
+            {
+                ScrollChanged(FirstVisiblePosition);
+            }
+
+            PositionSelectorRect();
+
+            if (!AreHeadersSticky || m_Header == null)
+            {
+                base.DispatchDraw(canvas);
+                return;
+            }
+
+            if (!IsDrawingListUnderStickyHeader)
+            {
+                m_ClippingRect.Set(0, m_HeaderBottomPosition, Width, Height);
+                canvas.Save();
+                canvas.ClipRect(m_ClippingRect);
+            }
+
+            base.DispatchDraw(canvas);
+
+            if (!IsDrawingListUnderStickyHeader)
+            {
+                canvas.Restore();
+            }
+
+            DrawStickyHeader(canvas);
+        }
+
+        private void PositionSelectorRect()
+        {
+            if (m_SelectorRect.IsEmpty) 
+                return;
+
+            var selectorPosition = GetSelectorPosition();
+            if (selectorPosition < 0)
+                return;
+
+            var firstVisibleItem = FixedFirstVisibleItem(FirstVisiblePosition);
+            var view = GetChildAt(selectorPosition - firstVisibleItem) as WrapperView;
+            if(view == null)
+                return;
+            m_SelectorRect.Top = view.Top + view.ItemTop;
+        }
+
+        private int GetSelectorPosition()
+        {
+            if (m_SelectorPositionField == IntPtr.Zero)//
+            {
+                for (int i = 0; i < ChildCount; i++)
+                {
+                    if (GetChildAt(i).Bottom == m_SelectorRect.Bottom)
+                        return i + FixedFirstVisibleItem(FirstVisiblePosition);
+                }
+            }
+            else
+            {
+                try
+                {
+                    return GetObject<Integer>(m_SelectorPositionField, JniHandleOwnership.TransferLocalRef).IntValue();
+                }
+                catch (Exception)
+                {
+                    
+                }
+            }
+
+
+            return -1;
+        }
+
+        private void DrawStickyHeader(Canvas canvas)
+        {
+            var headerHeight = GetHeaderHeight();
+            var top = m_HeaderBottomPosition - headerHeight;
+
+            //clip the headers drawing area
+            m_ClippingRect.Left = PaddingLeft;
+            m_ClippingRect.Right = Width - PaddingRight;
+            m_ClippingRect.Bottom = top + headerHeight;
+            m_ClippingRect.Top = m_ClippingToPadding ? PaddingTop : 0;
+
+            canvas.Save();
+            canvas.ClipRect(m_ClippingRect);
+            canvas.Translate(PaddingLeft, top);
+            m_Header.Draw(canvas);
+            canvas.Restore();
+        }
+
+        private void MeasureHeader()
+        {
+            var widthMeasureSpec = MeasureSpec.MakeMeasureSpec(Width - PaddingLeft - PaddingRight -
+                                                               (IsScrollBarOverlay() ? 0 : VerticalScrollbarWidth),
+                                                               MeasureSpecMode.Exactly);
+
+            var heightMeasureSpec = 0;
+            var layoutParams = m_Header.LayoutParameters;
+            if (layoutParams == null)
+            {
+                m_Header.LayoutParameters = new MarginLayoutParams(ViewGroup.LayoutParams.MatchParent,
+                                                                             ViewGroup.LayoutParams.WrapContent);
+            }
+            if (layoutParams != null && layoutParams.Height > 0)
+            {
+                heightMeasureSpec = MeasureSpec.MakeMeasureSpec(layoutParams.Height, MeasureSpecMode.Exactly);
+            }
+            else
+            {
+                heightMeasureSpec = MeasureSpec.MakeMeasureSpec(0, MeasureSpecMode.Unspecified);
+            }
+
+            m_Header.Measure(widthMeasureSpec, heightMeasureSpec);
+#if __ANDROID_17__
+            if ((int)Build.VERSION.SdkInt >= 17) //JB_MR1
+            {
+                m_Header.LayoutDirection - this.LayoutDirection;
+            }
+#endif
+
+            m_Header.Layout(PaddingLeft, 0, Width - PaddingRight, m_Header.MeasuredHeight);
+        }
+
+        private bool IsScrollBarOverlay()
+        {
+           return  ScrollBarStyle == ScrollbarStyles.InsideOverlay || ScrollBarStyle == ScrollbarStyles.OutsideOverlay;
+
+        }
+
+        private int GetHeaderHeight()
+        {
+            return m_Header == null ? 0 : m_Header.MeasuredHeight;
+        }
+
+        public override void SetClipToPadding(bool clipToPadding)
+        {
+            base.SetClipToPadding(clipToPadding);
+            m_ClippingToPadding = clipToPadding;
+        }
+
+        private void ScrollChanged(int reportedFirstVisibleItem)
+        {
+            var adapaterCount = m_Adapter == null ? 0 : m_Adapter.Count;
+            if (adapaterCount == 0 || !AreHeadersSticky)
+                return;
+
+            var listViewHeaderCount = HeaderViewsCount;
+            var firstVisibleItem = FixedFirstVisibleItem(reportedFirstVisibleItem) - listViewHeaderCount;
+            
+            if (firstVisibleItem < 0 || firstVisibleItem > adapaterCount - 1)
+            {
+                Reset();
+                UpdateHeaderVisibilities();
+                Invalidate();
+                return;
+            }
+
+            if (m_HeaderPosition == -1 || m_HeaderPosition != firstVisibleItem)
+            {
+                m_HeaderPosition = firstVisibleItem;
+                m_CurrentHeaderId = m_Adapter.GetHeaderId(firstVisibleItem);
+                m_Header = m_Adapter.GetHeaderView(m_HeaderPosition, m_Header, this);
+                MeasureHeader();
+            }
+
+            var childCount = ChildCount;
+            if (childCount != 0)
+            {
+                View viewToWatch = null;
+                var watchingChildDistance = int.MaxValue;
+                var viewToWatchIsFooter = false;
+                for (int i = 0; i < childCount; i++)
+                {
+                    var child = base.GetChildAt(i);
+                    var childIsFooter = m_FooterViews != null && m_FooterViews.Contains(child);
+                    var childDistance = child.Top - (m_ClippingToPadding ? PaddingTop : 0);
+                    if (childDistance < 0)
+                        continue;
+
+                    if(viewToWatch == null || 
+                        (!viewToWatchIsFooter && !((WrapperView)viewToWatch).HasHeader) ||
+                        ((childIsFooter || ((WrapperView)child).HasHeader) && childDistance < watchingChildDistance))
+                    {
+                        viewToWatch = child;
+                        viewToWatchIsFooter = childIsFooter;
+                        watchingChildDistance = childDistance;
+                    }
+                }
+
+                var headerHeight = GetHeaderHeight();
+                if (viewToWatch != null && (viewToWatchIsFooter || ((WrapperView) viewToWatch).HasHeader))
+                {
+                    if (firstVisibleItem == listViewHeaderCount && base.GetChildAt(0).Top > 0 && !m_ClippingToPadding)
+                    {
+                        m_HeaderBottomPosition = 0;
+                    }
+                    else
+                    {
+                        var paddingTop = m_ClippingToPadding ? PaddingTop : 0;
+                        m_HeaderBottomPosition = Math.Min(viewToWatch.Top, headerHeight + paddingTop);
+                        m_HeaderBottomPosition = m_HeaderBottomPosition < paddingTop
+                                                     ? headerHeight + paddingTop
+                                                     : m_HeaderBottomPosition;
+
+                    }
+                }
+                else
+                {
+                    m_HeaderBottomPosition = headerHeight + (m_ClippingToPadding ? PaddingTop : 0);
+                }
+
+            }
+
+            UpdateHeaderVisibilities();
+            Invalidate();
+        }
+
+        public override void AddFooterView(View v)
+        {
+            base.AddFooterView(v);
+            if(m_FooterViews == null)
+                m_FooterViews = new List<View>();
+
+            m_FooterViews.Add(v);
+        }
+
+        public override bool RemoveFooterView(View v)
+        {
+            if (base.RemoveFooterView(v))
+            {
+                m_FooterViews.Remove(v);
+                return true;
+            }
+
+            return false;
+        }
+
+        private void UpdateHeaderVisibilities()
+        {
+            var top = m_ClippingToPadding ? PaddingTop : 0;
+            var childCount = ChildCount;
+            for (int i = 0; i < childCount; i++)
+            {
+                var child = base.GetChildAt(i) as WrapperView;
+                if (child == null)
+                    continue;
+
+                if (!child.HasHeader)
+                    continue;
+
+                var childHeader = child.Header;
+                childHeader.Visibility = child.Top < top ? ViewStates.Invisible : ViewStates.Visible;
+            }
+        }
+
+        private int FixedFirstVisibleItem(int firstVisibileItem)
+        {
+            if ((int)Build.VERSION.SdkInt >= 11) //HC
+            {
+                return firstVisibileItem;
+            }
+
+            for (int i = 0; i < ChildCount; i++)
+            {
+                if (GetChildAt(i).Bottom >= 0)
+                {
+                    firstVisibileItem += i;
+                    break;
+                }
+            }
+
+            //Work around to fix bug with firstVisibileItem being to high beacuse
+            //ListView does not take clipTOPadding=false into account
+            if (!m_ClippingToPadding && PaddingTop > 0 && base.GetChildAt(0).Top > 0 && firstVisibileItem > 0)
+            {
+                firstVisibileItem -= 1;
+            }
+
+            return firstVisibileItem;
+        }
+
+        //TODO handle touched better, multitouch etc.
+        public override bool OnTouchEvent(MotionEvent e)
+        {
+
+            var action = e.Action;
+            if (action == MotionEventActions.Down && e.GetY() <= m_HeaderBottomPosition)
+            {
+                m_HeaderDownY = e.GetY();
+                m_HeaderBeingPressed = true;
+                m_Header.Pressed = true;
+                m_Header.Invalidate();
+                Invalidate(0,0,Width, m_HeaderBottomPosition);
+                return true;
+            }
+
+            if (m_HeaderBeingPressed)
+            {
+                if (Math.Abs(e.GetY() - m_HeaderDownY) < m_ViewConfiguration.ScaledTouchSlop)
+                {
+                    if (action == MotionEventActions.Up || action == MotionEventActions.Cancel)
+                    {
+                        m_HeaderDownY = -1;
+                        m_HeaderBeingPressed = false;
+                        m_Header.Pressed = false;
+                        m_Header.Invalidate();
+                        Invalidate(0,0,Width, m_HeaderBottomPosition);
+                        if(OnHeaderClickListener != null)
+                            OnHeaderClickListener.OnHeaderClick(this, m_Header, m_HeaderPosition, m_CurrentHeaderId, true);
+                    }
+                    return true;
+                }
+
+                m_HeaderDownY = -1;
+                m_HeaderBeingPressed = false;
+                m_Header.Pressed = false;
+                m_Header.Invalidate();
+                Invalidate(0, 0, Width, m_HeaderBottomPosition);
+            }
+            return base.OnTouchEvent(e);
+        }
+
     }
 }

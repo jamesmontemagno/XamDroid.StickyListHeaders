@@ -17,21 +17,35 @@
  * Converted from: https://github.com/emilsjolander/StickyListHeaders
  */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using Android.App;
 using Android.Content;
-using Android.OS;
-using Android.Runtime;
-using Android.Views;
 using Android.Widget;
 
 namespace com.refractored.components.stickylistheaders
 {
-    class SectionIndexerAdapterWrapper
+    /// <summary>
+    /// Wrapper for section indexer
+    /// </summary>
+    public class SectionIndexerAdapterWrapper : AdapterWrapper, ISectionIndexer
     {
+        private readonly ISectionIndexer m_SectionIndexer;
+
+        public SectionIndexerAdapterWrapper(Context context, IStickyListHeadersAdapter sectionDelegate) : base(context, sectionDelegate)
+        {
+            m_SectionIndexer = sectionDelegate as ISectionIndexer;
+        }
+        public int GetPositionForSection(int section)
+        {
+            return m_SectionIndexer.GetPositionForSection(section);
+        }
+
+        public int GetSectionForPosition(int position)
+        {
+            return m_SectionIndexer.GetSectionForPosition(position);
+        }
+
+        public Java.Lang.Object[] GetSections()
+        {
+            return m_SectionIndexer.GetSections();
+        }
     }
 }

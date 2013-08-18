@@ -29,11 +29,26 @@ namespace com.refractored.components.stickylistheaders
     /// </summary>
     public class WrapperView : ViewGroup
     {
-        private View m_Item;
-        private Drawable m_Divider;
-        private int m_DividerHeight;
-        private View m_Header;
-        private int m_ItemTop;
+        /// <summary>
+        /// Gets or sets the current item
+        /// </summary>
+        public View Item { get; private set; }
+        /// <summary>
+        /// Gets or sets the Divider
+        /// </summary>
+        public Drawable Divider { get; private set; }
+        /// <summary>
+        /// Gets or sets the divider height
+        /// </summary>
+        public int DividerHeight { get; private set; }
+        /// <summary>
+        /// Gets or sets the current header
+        /// </summary>
+        public View Header { get; private set; }
+        /// <summary>
+        /// Gets or sets the item top position
+        /// </summary>
+        public int ItemTop { get; private set; }
 
         public WrapperView(Context context)
             : base(context)
@@ -48,10 +63,10 @@ namespace com.refractored.components.stickylistheaders
 
             //Remove the current item if it isn't the same
             //Incase there is recycling of views
-            if (m_Item != item)
+            if (Item != item)
             {
-                RemoveView(m_Item);
-                m_Item = item;
+                RemoveView(Item);
+                Item = item;
                 var parent = item.Parent as ViewGroup;
                 if (parent != null && parent != this)
                 {
@@ -62,20 +77,20 @@ namespace com.refractored.components.stickylistheaders
             }
 
             //Also try this for the header
-            if (m_Header != header)
+            if (Header != header)
             {
-                if (m_Header != null)
-                    RemoveView(m_Header);
+                if (Header != null)
+                    RemoveView(Header);
 
-                m_Header = header;
+                Header = header;
                 if (header != null)
                     AddView(header);
             }
 
-            if (m_Divider != divider)
+            if (Divider != divider)
             {
-                m_Divider = divider;
-                m_DividerHeight = dividerHeight;
+                Divider = divider;
+                DividerHeight = dividerHeight;
                 Invalidate();
             }
         }
@@ -83,7 +98,7 @@ namespace com.refractored.components.stickylistheaders
         /// <summary>
         /// Gets if it has a header
         /// </summary>
-        public bool HasHeader { get { return m_Header != null; } }
+        public bool HasHeader { get { return Header != null; } }
 
         protected override void OnMeasure(int widthMeasureSpec, int heightMeasureSpec)
         {
@@ -93,33 +108,33 @@ namespace com.refractored.components.stickylistheaders
 
             var height = 0;
             //Measer the header or the deivider, when there is a header visible it will act as the divider
-            if (m_Header != null)
+            if (Header != null)
             {
 
-                if (m_Header.LayoutParameters != null && m_Header.LayoutParameters.Height > 0)
+                if (Header.LayoutParameters != null && Header.LayoutParameters.Height > 0)
                 {
-                    height = m_Header.LayoutParameters.Height;
+                    height = Header.LayoutParameters.Height;
                 }
-                m_Header.Measure(childWidthMeasureSpec,
+                Header.Measure(childWidthMeasureSpec,
                                    MeasureSpec.MakeMeasureSpec(height, MeasureSpecMode.Exactly));
 
-                measuredHeight += m_Header.MeasuredHeight;
+                measuredHeight += Header.MeasuredHeight;
             }
-            else if (m_Divider != null)
+            else if (Divider != null)
             {
-                measuredHeight += m_DividerHeight;
+                measuredHeight += DividerHeight;
             }
 
             //Measure the item
             height = 0;
-            if (m_Item.LayoutParameters != null && m_Item.LayoutParameters.Height > 0)
+            if (Item.LayoutParameters != null && Item.LayoutParameters.Height > 0)
             {
-                height = m_Item.LayoutParameters.Height;
+                height = Item.LayoutParameters.Height;
             }
-            m_Item.Measure(childWidthMeasureSpec,
+            Item.Measure(childWidthMeasureSpec,
                                MeasureSpec.MakeMeasureSpec(height, MeasureSpecMode.Exactly));
 
-            measuredHeight += m_Item.MeasuredHeight;
+            measuredHeight += Item.MeasuredHeight;
 
             SetMeasuredDimension(measuredWidth, measuredHeight);
         }
@@ -131,23 +146,23 @@ namespace com.refractored.components.stickylistheaders
             r = Width;
             b = Height;
 
-            if (m_Header != null)
+            if (Header != null)
             {
-                var headerHeight = m_Header.MeasuredHeight;
-                m_Header.Layout(l, t, r, headerHeight);
-                m_ItemTop = headerHeight;
-                m_Item.Layout(l, headerHeight, r, b);
+                var headerHeight = Header.MeasuredHeight;
+                Header.Layout(l, t, r, headerHeight);
+                ItemTop = headerHeight;
+                Item.Layout(l, headerHeight, r, b);
             }
-            else if (m_Divider != null)
+            else if (Divider != null)
             {
-                m_Divider.SetBounds(l, t, r, m_DividerHeight);
-                m_ItemTop = m_DividerHeight;
-                m_Item.Layout(l, m_DividerHeight, r, b);
+                Divider.SetBounds(l, t, r, DividerHeight);
+                ItemTop = DividerHeight;
+                Item.Layout(l, DividerHeight, r, b);
             }
             else
             {
-                m_ItemTop = t;
-                m_Item.Layout(l, t, r, b);
+                ItemTop = t;
+                Item.Layout(l, t, r, b);
             }
         }
 
@@ -155,15 +170,15 @@ namespace com.refractored.components.stickylistheaders
         {
             base.DispatchDraw(canvas);
 
-            if (m_Header == null && m_Divider != null)
+            if (Header == null && Divider != null)
             {
                 //Drawable.setbounds does not work on pre honeycomb, so you have to do a little work around
                 //for anything pre-HC.
                 if ((int) Build.VERSION.SdkInt < 11)
                 {
-                    canvas.ClipRect(0, 0, Width, m_DividerHeight);
+                    canvas.ClipRect(0, 0, Width, DividerHeight);
                 }
-                m_Divider.Draw(canvas);
+                Divider.Draw(canvas);
             }
         }
     }

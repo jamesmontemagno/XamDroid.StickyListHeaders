@@ -47,8 +47,8 @@
     <Compile Include="Resources\Resource.Designer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SectionIndexerAdapterWrapper.cs" />
-    <Compile Include="StickyListHeadersAdapter.cs" />
-    <Compile Include="StickyListHeadersListVIew.cs" />
+    <Compile Include="IStickyListHeadersAdapter.cs" />
+    <Compile Include="StickyListHeadersListView.cs" />
     <Compile Include="WrapperView.cs" />
   </ItemGroup>
   <ItemGroup>
