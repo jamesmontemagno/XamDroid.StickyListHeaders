@@ -3,9 +3,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent" >
 
-  <TextView android:text="@string/app_name"
+  <TextView android:text="@string/header_text"
   android:layout_width="match_parent"
-  android:layout_height="400dip"
+  android:layout_height="70dip"
   android:gravity="center"
   android:layout_gravity="center"/>
 

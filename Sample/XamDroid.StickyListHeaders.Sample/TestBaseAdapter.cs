@@ -124,7 +124,9 @@ namespace com.refractored.xamdroid.stickylistheaders.sample
             }
 
             var headerChar = m_Countries[position].Substring(0, 1)[0];
-            string headerText;
+            string headerText = headerChar.ToString();
+            //Enable if you want to see 2 or 3 lines deep
+            /*
             if (headerChar % 2 == 0)
             {
                 headerText = headerChar + "\n" + headerChar + "\n" + headerChar;
@@ -132,7 +134,7 @@ namespace com.refractored.xamdroid.stickylistheaders.sample
             else
             {
                 headerText = headerChar + "\n" + headerChar;
-            }
+            }*/
             holder.Text1.Text = headerText;
             return convertView;
         }

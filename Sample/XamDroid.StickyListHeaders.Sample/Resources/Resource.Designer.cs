@@ -196,6 +196,12 @@ namespace com.refractored.xamdroid.stickylistheaders.sample
 			// aapt resource value: 0x7f040003
 			public const int app_name = 2130968579;
 			
+			// aapt resource value: 0x7f040005
+			public const int footer_text = 2130968581;
+			
+			// aapt resource value: 0x7f040004
+			public const int header_text = 2130968580;
+			
 			// aapt resource value: 0x7f040002
 			public const int hello = 2130968578;
 			

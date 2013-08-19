@@ -107,6 +107,7 @@ namespace com.refractored.components.stickylistheaders
             var measuredHeight = 0;
 
             var height = 0;
+            var mode = MeasureSpecMode.Unspecified;
             //Measer the header or the deivider, when there is a header visible it will act as the divider
             if (Header != null)
             {
@@ -114,9 +115,11 @@ namespace com.refractored.components.stickylistheaders
                 if (Header.LayoutParameters != null && Header.LayoutParameters.Height > 0)
                 {
                     height = Header.LayoutParameters.Height;
+                    mode = MeasureSpecMode.Exactly;
+                    
                 }
                 Header.Measure(childWidthMeasureSpec,
-                                   MeasureSpec.MakeMeasureSpec(height, MeasureSpecMode.Exactly));
+                                   MeasureSpec.MakeMeasureSpec(height, mode));
 
                 measuredHeight += Header.MeasuredHeight;
             }
@@ -127,12 +130,14 @@ namespace com.refractored.components.stickylistheaders
 
             //Measure the item
             height = 0;
+            mode = MeasureSpecMode.Unspecified;
             if (Item.LayoutParameters != null && Item.LayoutParameters.Height > 0)
             {
                 height = Item.LayoutParameters.Height;
+                mode = MeasureSpecMode.Exactly;
             }
             Item.Measure(childWidthMeasureSpec,
-                               MeasureSpec.MakeMeasureSpec(height, MeasureSpecMode.Exactly));
+                               MeasureSpec.MakeMeasureSpec(height, mode));
 
             measuredHeight += Item.MeasuredHeight;
 

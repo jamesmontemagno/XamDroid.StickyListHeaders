@@ -23,10 +23,8 @@ using Android.Database;
 using Android.Graphics.Drawables;
 using Android.Views;
 using Android.Widget;
-using Java.Interop;
 using Java.Lang;
 using com.refractored.components.stickylistheaders.Interfaces;
-using Exception = System.Exception;
 
 namespace com.refractored.components.stickylistheaders
 {
@@ -36,26 +34,22 @@ namespace com.refractored.components.stickylistheaders
     /// </summary>
     public class AdapterWrapper : BaseAdapter, IStickyListHeadersAdapter
     {
-
-        
-
         public IStickyListHeadersAdapter Delegate { get; set; }
+
         private readonly List<View> m_HeaderCache = new List<View>();
         private readonly Context m_Context;
         public IOnHeaderAdapterClickListener OnHeaderAdapterClickListener { get; set; }
         private DataSetObserver m_DataSetObserver;
 
-        public AdapterWrapper(Context context)
+        public AdapterWrapper(Context context, object adapterDelegate)
         {
             m_Context = context;
-        }
+            Delegate = adapterDelegate as IStickyListHeadersAdapter;
 
-        public void SetDelegateHeader(IStickyListHeadersAdapter delegateHeader)
-        {
-            Delegate = delegateHeader;
-
+            if(Delegate == null)
+                throw new NullReferenceException("Adapter Delegate must be of type IStickyListHeadersAdapter");
             m_DataSetObserver = new AdapterWrapperObserver(this, m_HeaderCache);
-
+           
             Delegate.RegisterDataSetObserver(m_DataSetObserver);
         }
 
@@ -120,6 +114,9 @@ namespace com.refractored.components.stickylistheaders
         {
             get
             {
+                if (Delegate == null)
+                    return true;
+
                 return Delegate.HasStableIds;
             }
         }
@@ -217,7 +214,7 @@ namespace com.refractored.components.stickylistheaders
         private void RecycleHeaderIfExists(WrapperView wrapperView)
         {
             var header = wrapperView.Header;
-            if(header != null && !m_HeaderCache.Contains(header))
+            if(header != null)
                 m_HeaderCache.Add(header);
         }
 

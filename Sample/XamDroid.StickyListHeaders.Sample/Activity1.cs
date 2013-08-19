@@ -14,6 +14,7 @@ namespace com.refractored.xamdroid.stickylistheaders.sample
 #endif
     {
         private ViewPager m_Pager;
+        private MainPagerAdapter m_Adapter;
 #if __ANDROID_11__
 
             public void OnTabReselected(ActionBar.Tab tab, Android.App.FragmentTransaction ft)
@@ -39,10 +40,11 @@ namespace com.refractored.xamdroid.stickylistheaders.sample
             SetContentView(Resource.Layout.Main);
 
             m_Pager = FindViewById<ViewPager>(Resource.Id.pager);
-            m_Pager.Adapter = new MainPagerAdapter(SupportFragmentManager);
-
+            m_Adapter = new MainPagerAdapter(SupportFragmentManager);
+            m_Pager.Adapter = m_Adapter;
 
 #if __ANDROID_11__
+            m_Pager.SetOnPageChangeListener(this);
             ActionBar.NavigationMode = ActionBarNavigationMode.Tabs;
             var tab = ActionBar.NewTab();
             tab.SetText("1");
@@ -85,6 +87,8 @@ namespace com.refractored.xamdroid.stickylistheaders.sample
             ActionBar.SetSelectedNavigationItem(position);
 #endif
         }
+
+
     }
 }
 

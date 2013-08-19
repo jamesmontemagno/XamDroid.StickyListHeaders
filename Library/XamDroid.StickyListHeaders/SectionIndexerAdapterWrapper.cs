@@ -30,15 +30,11 @@ namespace com.refractored.components.stickylistheaders
     {
         private ISectionIndexer m_SectionIndexer;
 
-        public SectionIndexerAdapterWrapper(Context context) : base(context)
+        public SectionIndexerAdapterWrapper(Context context, ISectionIndexer indexer) : base(context, indexer)
         {
-           
+            m_SectionIndexer = indexer;
         }
 
-        public void SetSectionDelegate(IStickyListHeadersAdapter sectionDelegate)
-        {
-            m_SectionIndexer = sectionDelegate as ISectionIndexer;
-        }
 
         public int GetPositionForSection(int section)
         {
