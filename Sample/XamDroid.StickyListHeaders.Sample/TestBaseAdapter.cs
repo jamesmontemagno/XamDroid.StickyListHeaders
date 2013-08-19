@@ -106,8 +106,6 @@ namespace com.refractored.xamdroid.stickylistheaders.sample
         }
 
 
-
-
         public View GetHeaderView(int position, View convertView, ViewGroup parent)
         {
             HeaderViewHolder holder = null;
