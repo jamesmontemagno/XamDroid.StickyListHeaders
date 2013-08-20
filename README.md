@@ -1,3 +1,6 @@
+[![Stories in Ready](https://badge.waffle.io/jamesmontemagno/XamDroid.StickyListHeaders.png)](http://waffle.io/jamesmontemagno/XamDroid.StickyListHeaders)
+
+
 XamDroid.StickyListHeaders
 ================
 
