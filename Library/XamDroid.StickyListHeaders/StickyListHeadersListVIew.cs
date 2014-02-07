@@ -55,13 +55,15 @@ namespace com.refractored.components.stickylistheaders
         }
 
         private IOnHeaderListClickListener m_OnHeaderListClickListener;
-        public IOnHeaderListClickListener OnHeaderListClickListener { get { return m_OnHeaderListClickListener; }
+        public IOnHeaderListClickListener OnHeaderListClickListener
+        {
+            get { return m_OnHeaderListClickListener; }
             set
             {
                 m_OnHeaderListClickListener = value;
                 m_AdapterHeaderAdapterClickListener = new AdapterHeaderAdapterClickListener(m_OnHeaderListClickListener, this);
-         
-            } 
+
+            }
         }
         public bool IsDrawingListUnderStickyHeader { get; set; }
 
@@ -70,18 +72,19 @@ namespace com.refractored.components.stickylistheaders
         private int m_DividerHeight;
         private Drawable m_Divider;
         private bool m_ClippingToPadding;
-        private readonly Rect m_ClippingRect = new Rect();
+        private Rect m_ClippingRect = new Rect();
         private long m_CurrentHeaderId = -1;
         private AdapterWrapper m_Adapter;
         private float m_HeaderDownY = -1;
         private bool m_HeaderBeingPressed = false;
         private int m_HeaderPosition;
-        private readonly ViewConfiguration m_ViewConfiguration;
+        private ViewConfiguration m_ViewConfiguration;
         private List<View> m_FooterViews;
-        private readonly Rect m_SelectorRect = new Rect(); //for if reflection fails
-        private readonly IntPtr m_SelectorPositionField;
+        private Rect m_SelectorRect = new Rect(); //for if reflection fails
+        private IntPtr m_SelectorPositionField;
         private AdapterHeaderAdapterClickListener m_AdapterHeaderAdapterClickListener;
-        private readonly DataSetObserver m_DataSetObserver;
+        private DataSetObserver m_DataSetObserver;
+        private bool _initialized;
 
         private class AdapterHeaderAdapterClickListener : IOnHeaderAdapterClickListener
         {
@@ -125,50 +128,67 @@ namespace com.refractored.components.stickylistheaders
         public StickyListHeadersListView(System.IntPtr javaReference, Android.Runtime.JniHandleOwnership transfer)
             : base(javaReference, transfer)
         {
-          
+
         }
 
 
-        public StickyListHeadersListView(Context context) : this(context, null)
+        public StickyListHeadersListView(Context context)
+            : this(context, null)
         {
-            
+
         }
 
         public StickyListHeadersListView(Context context, IAttributeSet attrs) :
             this(context, attrs, Android.Resource.Attribute.ListViewStyle)
         {
-            
+
         }
 
         public StickyListHeadersListView(Context context, IAttributeSet attrs, int defStyle) :
             base(context, attrs, defStyle)
         {
-            m_DataSetObserver = new StickyListHeadersListViewObserver(this);
-            m_AdapterHeaderAdapterClickListener = new AdapterHeaderAdapterClickListener(OnHeaderListClickListener, this);
+            Initialize(context);
+        }
 
-            base.SetOnScrollListener(this);
-            //null out divider, dividers are handled by adapter so they look good with headers
-            base.Divider = null;
-            base.DividerHeight = 0;
-
-            m_ViewConfiguration = ViewConfiguration.Get(context);
-            m_ClippingToPadding = true;
-
-            try
+        private void Initialize(Context context)
+        {
+            if (!_initialized)
             {
-                //reflection to get selector ref
-                var absListViewClass = JNIEnv.FindClass(typeof (AbsListView));
-                var selectorRectId = JNIEnv.GetFieldID(absListViewClass, "mSelectorRect", "()Landroid/graphics/Rect");
-                var selectorRectField = JNIEnv.GetObjectField(absListViewClass, selectorRectId);
-                m_SelectorRect = Java.Lang.Object.GetObject<Rect>(selectorRectField, JniHandleOwnership.TransferLocalRef);
+                m_DataSetObserver = new StickyListHeadersListViewObserver(this);
+                m_AdapterHeaderAdapterClickListener = new AdapterHeaderAdapterClickListener(OnHeaderListClickListener, this);
 
-                var selectorPositionId = JNIEnv.GetFieldID(absListViewClass, "mSelectorPosition", "()Ljava/lang/Integer");
-                m_SelectorPositionField = JNIEnv.GetObjectField(absListViewClass, selectorPositionId);
+                base.SetOnScrollListener(this);
+                //null out divider, dividers are handled by adapter so they look good with headers
+                base.Divider = null;
+                base.DividerHeight = 0;
+
+                m_ViewConfiguration = ViewConfiguration.Get(context);
+                m_ClippingToPadding = true;
+
+                try
+                {
+                    //reflection to get selector ref
+                    var absListViewClass = JNIEnv.FindClass(typeof(AbsListView));
+                    var selectorRectId = JNIEnv.GetFieldID(absListViewClass, "mSelectorRect", "()Landroid/graphics/Rect");
+                    var selectorRectField = JNIEnv.GetObjectField(absListViewClass, selectorRectId);
+                    m_SelectorRect = Java.Lang.Object.GetObject<Rect>(selectorRectField, JniHandleOwnership.TransferLocalRef);
+
+                    var selectorPositionId = JNIEnv.GetFieldID(absListViewClass, "mSelectorPosition", "()Ljava/lang/Integer");
+                    m_SelectorPositionField = JNIEnv.GetObjectField(absListViewClass, selectorPositionId);
+                }
+                catch (Exception)
+                {
+
+                }
+                _initialized = true;
             }
-            catch (Exception)
-            {
-                
-            }
+        }
+
+        protected override void OnFinishInflate()
+        {
+            base.OnFinishInflate();
+
+            Initialize(this.Context);
         }
 
         protected override void OnLayout(bool changed, int left, int top, int right, int bottom)
@@ -192,7 +212,7 @@ namespace com.refractored.components.stickylistheaders
         public override bool PerformItemClick(View view, int position, long id)
         {
             if (view is WrapperView)
-                view = ((WrapperView) view).Item;
+                view = ((WrapperView)view).Item;
 
             return base.PerformItemClick(view, position, id);
         }
@@ -346,7 +366,7 @@ namespace com.refractored.components.stickylistheaders
 
         protected override void DispatchDraw(Canvas canvas)
         {
-            if ((int) Build.VERSION.SdkInt < 8) //froyo
+            if ((int)Build.VERSION.SdkInt < 8) //froyo
             {
                 ScrollChanged(FirstVisiblePosition);
             }
@@ -378,7 +398,7 @@ namespace com.refractored.components.stickylistheaders
 
         private void PositionSelectorRect()
         {
-            if (m_SelectorRect.IsEmpty) 
+            if (m_SelectorRect.IsEmpty)
                 return;
 
             var selectorPosition = GetSelectorPosition();
@@ -387,7 +407,7 @@ namespace com.refractored.components.stickylistheaders
 
             var firstVisibleItem = FixedFirstVisibleItem(FirstVisiblePosition);
             var view = GetChildAt(selectorPosition - firstVisibleItem) as WrapperView;
-            if(view == null)
+            if (view == null)
                 return;
             m_SelectorRect.Top = view.Top + view.ItemTop;
         }
@@ -410,7 +430,7 @@ namespace com.refractored.components.stickylistheaders
                 }
                 catch (Exception)
                 {
-                    
+
                 }
             }
 
@@ -471,7 +491,7 @@ namespace com.refractored.components.stickylistheaders
 
         private bool IsScrollBarOverlay()
         {
-           return  ScrollBarStyle == ScrollbarStyles.InsideOverlay || ScrollBarStyle == ScrollbarStyles.OutsideOverlay;
+            return ScrollBarStyle == ScrollbarStyles.InsideOverlay || ScrollBarStyle == ScrollbarStyles.OutsideOverlay;
 
         }
 
@@ -494,7 +514,7 @@ namespace com.refractored.components.stickylistheaders
 
             var listViewHeaderCount = HeaderViewsCount;
             var firstVisibleItem = FixedFirstVisibleItem(reportedFirstVisibleItem) - listViewHeaderCount;
-            
+
             if (firstVisibleItem < 0 || firstVisibleItem > adapaterCount - 1)
             {
                 Reset();
@@ -525,7 +545,7 @@ namespace com.refractored.components.stickylistheaders
                     if (childDistance < 0)
                         continue;
 
-                    if(viewToWatch == null || 
+                    if (viewToWatch == null ||
                         (!viewToWatchIsFooter && !((WrapperView)viewToWatch).HasHeader) ||
                         ((childIsFooter || ((WrapperView)child).HasHeader) && childDistance < watchingChildDistance))
                     {
@@ -536,7 +556,7 @@ namespace com.refractored.components.stickylistheaders
                 }
 
                 var headerHeight = GetHeaderHeight();
-                if (viewToWatch != null && (viewToWatchIsFooter || ((WrapperView) viewToWatch).HasHeader))
+                if (viewToWatch != null && (viewToWatchIsFooter || ((WrapperView)viewToWatch).HasHeader))
                 {
                     if (firstVisibleItem == listViewHeaderCount && base.GetChildAt(0).Top > 0 && !m_ClippingToPadding)
                     {
@@ -566,7 +586,7 @@ namespace com.refractored.components.stickylistheaders
         public override void AddFooterView(View v)
         {
             base.AddFooterView(v);
-            if(m_FooterViews == null)
+            if (m_FooterViews == null)
                 m_FooterViews = new List<View>();
 
             m_FooterViews.Add(v);
@@ -638,7 +658,7 @@ namespace com.refractored.components.stickylistheaders
                 m_HeaderBeingPressed = true;
                 m_Header.Pressed = true;
                 m_Header.Invalidate();
-                Invalidate(0,0,Width, m_HeaderBottomPosition);
+                Invalidate(0, 0, Width, m_HeaderBottomPosition);
                 return true;
             }
 
@@ -652,8 +672,8 @@ namespace com.refractored.components.stickylistheaders
                         m_HeaderBeingPressed = false;
                         m_Header.Pressed = false;
                         m_Header.Invalidate();
-                        Invalidate(0,0,Width, m_HeaderBottomPosition);
-                        if(OnHeaderListClickListener != null)
+                        Invalidate(0, 0, Width, m_HeaderBottomPosition);
+                        if (OnHeaderListClickListener != null)
                             OnHeaderListClickListener.OnHeaderClick(this, m_Header, m_HeaderPosition, m_CurrentHeaderId, true);
                     }
                     return true;
@@ -674,7 +694,7 @@ namespace com.refractored.components.stickylistheaders
             if (OnScrollListenerDelegate != null)
                 OnScrollListenerDelegate.OnScroll(view, firstVisibleItem, visibleItemCount, totalItemCount);
 
-            if ((int) Build.VERSION.SdkInt >= 8)//FROYO
+            if ((int)Build.VERSION.SdkInt >= 8)//FROYO
                 ScrollChanged(firstVisibleItem);
         }
 
