@@ -65,12 +65,12 @@ namespace com.refractored.components.stickylistheaders
             public override void OnInvalidated()
             {
                 m_HeaderCache.Clear();
-                m_Wrapper.NotifyDataSetInvalidated();
+               m_Wrapper.Super_NotifyDataSetInvalidated();
             }
 
             public override void OnChanged()
             {
-                m_Wrapper.NotifyDataSetChanged();
+               m_Wrapper.Super_NotifyDataSetChanged();
             }
         }
 
@@ -195,10 +195,20 @@ namespace com.refractored.components.stickylistheaders
             ((BaseAdapter)Delegate).NotifyDataSetChanged();
         }
 
+       public void Super_NotifyDataSetChanged()
+       {
+           base.NotifyDataSetChanged();
+       }
+
         public override void NotifyDataSetInvalidated()
         {
             ((BaseAdapter)Delegate).NotifyDataSetInvalidated();
         }
+
+       public void Super_NotifyDataSetInvalidated()
+       {
+           base.NotifyDataSetInvalidated();
+       }
 
         public override string ToString()
         {
