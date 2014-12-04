@@ -689,7 +689,7 @@ namespace com.refractored.components.stickylistheaders
         }
 
 
-        public void OnScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount)
+        public virtual void OnScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount)
         {
             if (OnScrollListenerDelegate != null)
                 OnScrollListenerDelegate.OnScroll(view, firstVisibleItem, visibleItemCount, totalItemCount);
@@ -698,7 +698,7 @@ namespace com.refractored.components.stickylistheaders
                 ScrollChanged(firstVisibleItem);
         }
 
-        public void OnScrollStateChanged(AbsListView view, ScrollState scrollState)
+        public virtual void OnScrollStateChanged(AbsListView view, ScrollState scrollState)
         {
             if (OnScrollListenerDelegate == null)
                 return;
