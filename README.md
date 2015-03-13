@@ -1,6 +1,3 @@
-**Update Feb 3rd 2015**
-This library is now obsolete as a new universal Sticky Header is available on the component store that includes use in ListView, ScrollView, and RecyclerView: https://components.xamarin.com/view/stickyheader
-
 
 XamDroid.StickyListHeaders
 ================
